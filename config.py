@@ -3,12 +3,12 @@ from constants import *
 CLIENTS = [
     {
         "zip_code": "95050",
-        "model": MODEL_3,
+        "model": MODEL_Y,
         "conditions": [
             {
                 "email": "jiangyntz@gmail.com",
                 "max_price": 1000000,
-                "min_discount": 0,
+                "min_discount": 1000,
                 "trims": [LRAWD],
                 "features": [],
             },

@@ -16,8 +16,8 @@ QUERY = "?arrangeby=plh&range=200&zip="
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-GMAIL_USERNAME = "jiangyntz@gmail.com"
-GMAIL_PASSWORD = "iobtvgfenhfxllii"
+GMAIL_USERNAME = "117m4ojd@gmail.com"
+GMAIL_PASSWORD = "xthjkgbpwrcczazs"
 
 M3RWD = "Model 3 Rear-Wheel Drive"
 MYAWD = "Model Y All-Wheel Drive"
