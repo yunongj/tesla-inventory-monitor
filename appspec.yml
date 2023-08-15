@@ -1,0 +1,9 @@
+files:
+  - source: /config.py
+    destination: /home/ec2-user/tesla-inventory-monitor
+  - source: /constants.py
+    destination: /home/ec2-user/tesla-inventory-monitor
+  - source: /utils.py
+    destination: /home/ec2-user/tesla-inventory-monitor
+  - source: /web-monitor.py
+    destination: /home/ec2-user/tesla-inventory-monitor
