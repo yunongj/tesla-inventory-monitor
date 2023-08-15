@@ -1,3 +1,4 @@
+import argparse
 import time
 from datetime import datetime
 from typing import List
@@ -94,6 +95,12 @@ def filter_tesla_inventory(
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--playsound", action="store_true", help="Plays a sound when deal is found"
+    )
+    args = parser.parse_args()
+
     while True:
         options = webdriver.ChromeOptions()
         options.add_argument("--headless")
@@ -122,7 +129,9 @@ if __name__ == "__main__":
                         condition["email"],
                         ("\n\n\n").join(info_strs),
                     )
-                    playsound("./alert.mp3")
+
+                    if args.playsound:
+                        playsound("./alert.mp3")
 
         driver.quit()
         time.sleep(REFRESH_INTERVAL)
