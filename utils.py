@@ -1,16 +1,29 @@
 import csv
 import smtplib
 from email.message import EmailMessage
-from constants import (
-    SMTP_SERVER,
-    SMTP_PORT,
-    GMAIL_USERNAME,
-    GMAIL_PASSWORD,
-)
+
+import gspread
+from gspread.worksheet import Worksheet
+from oauth2client.service_account import ServiceAccountCredentials
+
+from constants import GMAIL_PASSWORD, GMAIL_USERNAME, SMTP_PORT, SMTP_SERVER
 
 
 def usd_to_number(usd_str: str):
-    return int(usd_str.replace("$", "").replace(",", ""))
+    return float(usd_str.replace("$", "").replace(",", ""))
+
+
+def number_to_usd(number: float):
+    return f"${number:,.2f}"
+
+
+def calculate_discount(old_price: str, new_price: str) -> str:
+    """Compute the discount amount and percentage based on old and new prices."""
+
+    old = usd_to_number(old_price)
+    new = usd_to_number(new_price)
+
+    return number_to_usd(old - new)
 
 
 def write_to_csv(data: list, filename: str = "prices.csv"):
@@ -34,6 +47,48 @@ def data_in_csv(data_id: str, filename: str = "prices.csv"):
         for row in reader:
             if row[-1] == data_id:
                 return True
+
+    return False
+
+
+def write_to_gs(
+    data: list,
+    key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
+    sheet: str = "prices",
+):
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "./keys/google-sheets-key.json", scope
+    )
+    client = gspread.authorize(creds)
+
+    sheet: Worksheet = client.open_by_key(key).worksheet(sheet)
+    sheet.append_row(data)
+
+
+def data_in_gs(
+    data_id: str,
+    key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
+    sheet: str = "prices",
+):
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "./keys/google-sheets-key.json", scope
+    )
+    client = gspread.authorize(creds)
+
+    sheet: Worksheet = client.open_by_key(key).worksheet(sheet)
+    data_ids: list[str] = sheet.col_values(9)
+
+    for id in data_ids:
+        if id == data_id:
+            return True
 
     return False
 

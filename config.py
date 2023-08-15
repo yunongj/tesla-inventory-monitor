@@ -9,7 +9,7 @@ CLIENTS = [
                 "email": "jiangyntz@gmail.com",
                 "max_price": 1000000,
                 "min_discount": 1000,
-                "trims": [LRAWD],
+                "trims": [MYAWD, LRAWD],
                 "features": [],
             },
         ],

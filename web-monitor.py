@@ -30,6 +30,7 @@ def filter_tesla_inventory(
     inventory_elements: List[WebElement],
     condition: dict,
     model: str,
+    zip_code: str,
 ):
     info_strs = []
 
@@ -47,7 +48,7 @@ def filter_tesla_inventory(
             condition["min_discount"],
             usd_to_number(new_price_element.text),
             usd_to_number(base_price_element.text),
-        ) and not data_in_csv(data_id):
+        ) and not data_in_gs(data_id):
             model_element = item.find_element(
                 By.CSS_SELECTOR, "div.result-basic-info div"
             )
@@ -75,10 +76,14 @@ def filter_tesla_inventory(
 
             info_list = [
                 model_element.text,
-                features_element.text.replace("\n", " # "),
                 new_price_element.text,
                 base_price_element.text,
-                datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
+                calculate_discount(
+                    old_price=base_price_element.text, new_price=new_price_element.text
+                ),
+                features_element.text.replace("\n", " # "),
+                datetime.now().strftime("%m/%d/%Y, %H:%M:%S") + " PST",
+                zip_code,
                 "https://www.tesla.com/"
                 + model
                 + "/order/"
@@ -86,9 +91,9 @@ def filter_tesla_inventory(
                 + data_id,
                 data_id,
             ]
-            info_str = (" | ").join(info_list)
+            write_to_gs(info_list)
 
-            write_to_csv(info_list)
+            info_str = (" | ").join(info_list)
             info_strs.append(info_str)
 
     return info_strs
@@ -118,6 +123,7 @@ if __name__ == "__main__":
                     inventory_elements,
                     condition,
                     client["model"],
+                    client["zip_code"],
                 )
                 if len(info_strs) > 0:
                     print(info_strs)
