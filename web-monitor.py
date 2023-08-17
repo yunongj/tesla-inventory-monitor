@@ -3,7 +3,6 @@ import time
 from datetime import datetime
 from typing import List
 
-from playsound import playsound
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -137,6 +136,8 @@ if __name__ == "__main__":
                     )
 
                     if args.playsound:
+                        from playsound import playsound
+
                         playsound("./alert.mp3")
 
         driver.quit()
