@@ -46,7 +46,7 @@ DATA_ID_PREFIX: dict[ModelKey, str] = {
     ModelKey.MODEL_Y: "7SAY",
 }
 
-AREA_TO_ZIPCODE = {
+AREA_TO_ZIPCODE: dict[str, str] = {
     "Arizona": "85001",
     "Colorado": "80001",
     "Bay Area, CA": "94016",
@@ -65,3 +65,5 @@ AREA_TO_ZIPCODE = {
     "Washington": "98109",
     "Washington, DC": "20001",
 }
+
+ZIPCODE_TO_AREA: dict[str, str] = {v: k for k, v in AREA_TO_ZIPCODE.items()}

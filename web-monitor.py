@@ -30,24 +30,25 @@ def filter_tesla_inventory(
     condition: dict,
     model: ModelKey,
     zip_code: str,
+    existing_data_ids: list[str],
 ):
-    info_strs = []
+    info_lists = []
 
     for item in inventory_elements:
-        new_price_element = item.find_element(
-            By.CSS_SELECTOR, "span.result-purchase-price"
+        new_price = usd_to_number(
+            item.find_element(By.CSS_SELECTOR, "span.result-purchase-price").text
         )
-        base_price_element = item.find_element(
-            By.CSS_SELECTOR, "span.result-price-base-price"
+        old_price = usd_to_number(
+            item.find_element(By.CSS_SELECTOR, "span.result-price-base-price").text
         )
         data_id = item.get_attribute("data-id").split("-")[0]
 
         if should_alert(
             int(condition["max_price"]),
             int(condition["min_discount"]),
-            usd_to_number(new_price_element.text),
-            usd_to_number(base_price_element.text),
-        ) and not data_in_gs(data_id):
+            new_price,
+            old_price,
+        ) and not check_data_id_exists(data_id, existing_data_ids):
             model_element = item.find_element(
                 By.CSS_SELECTOR, "div.result-basic-info div"
             )
@@ -75,14 +76,12 @@ def filter_tesla_inventory(
 
             info_list = [
                 model_element.text,
-                new_price_element.text,
-                base_price_element.text,
-                calculate_discount(
-                    old_price=base_price_element.text, new_price=new_price_element.text
-                ),
+                new_price,
+                old_price,
+                old_price - new_price,
                 features_element.text.replace("\n", " # "),
                 datetime.now().strftime("%m/%d/%Y, %H:%M:%S") + " PST",
-                zip_code,
+                ZIPCODE_TO_AREA[zip_code],
                 "https://www.tesla.com/"
                 + model.value
                 + "/order/"
@@ -90,12 +89,9 @@ def filter_tesla_inventory(
                 + data_id,
                 data_id,
             ]
-            write_to_gs(info_list)
+            info_lists.append(info_list)
 
-            info_str = (" | ").join(info_list)
-            info_strs.append(info_str)
-
-    return info_strs
+    return info_lists
 
 
 if __name__ == "__main__":
@@ -114,31 +110,45 @@ if __name__ == "__main__":
         driver = webdriver.Chrome(options)
 
         clients = get_user_input_from_gs()
+        existing_data_ids = get_data_ids_in_gs()
+        gs_data_to_write = []
 
         for (zip_code, model), conditions in clients.items():
             inventory_elements = get_tesla_inventory_info(zip_code, model, driver)
             for condition in conditions:
-                info_strs = filter_tesla_inventory(
+                info_lists = filter_tesla_inventory(
                     inventory_elements,
                     condition,
                     model,
                     zip_code,
+                    existing_data_ids,
                 )
-                if len(info_strs) > 0:
-                    # print(info_strs)
+                if len(info_lists) > 0:
+                    # print(info_lists)
+
                     send_email(
-                        "Tesla Availability Alert "
+                        "Tesla Availability Alert | "
                         + MODEL_KEY_NAME_MAP[model].value
-                        + " "
-                        + zip_code,
+                        + " | "
+                        + ZIPCODE_TO_AREA[zip_code],
                         condition["email"],
-                        ("\n\n\n").join(info_strs),
+                        ("\n\n\n").join(
+                            [
+                                " | ".join(map(str, info_list))
+                                for info_list in info_lists
+                            ]
+                        ),
                     )
+
+                    gs_data_to_write += info_lists
 
                     if args.playsound:
                         from playsound import playsound
 
                         playsound("./alert.mp3")
+
+        if len(gs_data_to_write) > 0:
+            write_to_gs(gs_data_to_write)
 
         driver.quit()
         time.sleep(REFRESH_INTERVAL)
