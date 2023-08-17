@@ -10,30 +10,14 @@ from constants import *
 
 
 def usd_to_number(usd_str: str):
-    return float(usd_str.replace("$", "").replace(",", ""))
+    return int(usd_str.replace("$", "").replace(",", ""))
 
 
 def number_to_usd(number: float):
     return f"${number:,.2f}"
 
 
-def calculate_discount(old_price: str, new_price: str) -> str:
-    """Compute the discount amount and percentage based on old and new prices."""
-
-    old = usd_to_number(old_price)
-    new = usd_to_number(new_price)
-
-    return number_to_usd(old - new)
-
-
 def write_to_csv(data: list, filename: str = "prices.csv"):
-    """
-    Write the given data into a specified CSV file.
-
-    Args:
-    - data (list): The data to write to the file. Each item in the list should be a tuple or list representing a row.
-    - filename (str): The name of the file to write to. Default is "found_items.csv".
-    """
     with open(
         filename, "a", newline=""
     ) as file:  # 'a' stands for 'append', so you don't overwrite previous data.
@@ -52,7 +36,7 @@ def data_in_csv(data_id: str, filename: str = "prices.csv"):
 
 
 def write_to_gs(
-    data: list,
+    data: list[list],
     key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
     sheet: str = "prices",
 ):
@@ -66,14 +50,13 @@ def write_to_gs(
     client = gspread.authorize(creds)
 
     sheet: Worksheet = client.open_by_key(key).worksheet(sheet)
-    sheet.append_row(data)
+    sheet.append_rows(data)
 
 
-def data_in_gs(
-    data_id: str,
+def get_data_ids_in_gs(
     key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
     sheet_name: str = "prices",
-):
+) -> list[str]:
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
     ]
@@ -86,6 +69,10 @@ def data_in_gs(
     sheet: Worksheet = client.open_by_key(key).worksheet(sheet_name)
     data_ids: list[str] = sheet.col_values(9)
 
+    return data_ids
+
+
+def check_data_id_exists(data_id: str, data_ids: list[str]) -> bool:
     for id in data_ids:
         if id == data_id:
             return True
@@ -135,13 +122,15 @@ def get_user_input_from_gs(
             {
                 "timestamp": input[0],
                 "email": input[1],
-                "max_price": input[4] or 1000000,
-                "min_discount": input[5] or 0,
+                "max_price": input[4] or "1000000",
+                "min_discount": input[5] or "0",
                 "trims": [
                     get_trim(model, trim.strip()) for trim in input[6].split(",")
                 ],
             }
         )
+
+    # print(clients)
 
     return clients
 
@@ -160,5 +149,5 @@ def send_email(subject, to, body):
         smtp.send_message(msg)
 
 
-def should_alert(max_price: int, min_discount: int, new_price: int, base_price: int):
-    return new_price <= max_price and (base_price - new_price) >= min_discount
+def should_alert(max_price: int, min_discount: int, new_price: int, old_price: int):
+    return new_price <= max_price and (old_price - new_price) >= min_discount
