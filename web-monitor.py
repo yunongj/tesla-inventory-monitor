@@ -125,7 +125,7 @@ if __name__ == "__main__":
                     zip_code,
                 )
                 if len(info_strs) > 0:
-                    print(info_strs)
+                    # print(info_strs)
                     send_email(
                         "Tesla Availability Alert "
                         + MODEL_KEY_NAME_MAP[model].value
