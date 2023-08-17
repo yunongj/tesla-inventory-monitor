@@ -125,7 +125,7 @@ def get_user_input_from_gs(
         if "paid" not in input[8]:
             continue
 
-        print("checking for customer: " + input[1])
+        # print("checking for customer: " + input[1])
 
         zip_code = AREA_TO_ZIPCODE[input[2]]
         model = MODEL_NAME_KEY_MAP[ModelName(input[3])]
@@ -142,8 +142,6 @@ def get_user_input_from_gs(
                 ],
             }
         )
-
-        print(clients)
 
     return clients
 
