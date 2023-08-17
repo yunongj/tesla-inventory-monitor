@@ -135,8 +135,8 @@ def get_user_input_from_gs(
             {
                 "timestamp": input[0],
                 "email": input[1],
-                "max_price": input[4],
-                "min_discount": input[5],
+                "max_price": input[4] or 1000000,
+                "min_discount": input[5] or 0,
                 "trims": [
                     get_trim(model, trim.strip()) for trim in input[6].split(",")
                 ],
