@@ -3,7 +3,7 @@ from constants import *
 CLIENTS = [
     {
         "zip_code": "95050",
-        "model": MODEL_Y,
+        "model": ModelKey.MODEL_Y,
         "conditions": [
             {
                 "email": "jiangyntz@gmail.com",

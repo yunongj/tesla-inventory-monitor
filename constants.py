@@ -1,13 +1,29 @@
-MODEL_Y = "my"
-MODEL_3 = "m3"
-MODEL_X = "mx"
-MODEL_S = "ms"
+from enum import Enum
 
-MODEL_KEY_MAP = {
-    MODEL_3: "Model 3",
-    MODEL_Y: "Model Y",
-    MODEL_X: "Model X",
-    MODEL_S: "Model S",
+
+class ModelKey(Enum):
+    MODEL_Y = "my"
+    MODEL_3 = "m3"
+    MODEL_X = "mx"
+    MODEL_S = "ms"
+
+
+class ModelName(Enum):
+    MODEL_Y = "Model Y"
+    MODEL_3 = "Model 3"
+    MODEL_X = "Model X"
+    MODEL_S = "Model S"
+
+
+MODEL_KEY_NAME_MAP: dict[ModelKey, ModelName] = {
+    ModelKey.MODEL_3: ModelName.MODEL_3,
+    ModelKey.MODEL_Y: ModelName.MODEL_Y,
+    ModelKey.MODEL_X: ModelName.MODEL_X,
+    ModelKey.MODEL_S: ModelName.MODEL_S,
+}
+
+MODEL_NAME_KEY_MAP: dict[ModelName, ModelKey] = {
+    v: k for k, v in MODEL_KEY_NAME_MAP.items()
 }
 
 BROWSER_PATH = "./chromedriver"
@@ -24,7 +40,28 @@ MYAWD = "Model Y All-Wheel Drive"
 LRAWD = "Long Range"
 PAWD = "Performance"
 
-DATA_ID_PREFIX = {
-    MODEL_3: "5YJ3",
-    MODEL_Y: "7SAY",
+
+DATA_ID_PREFIX: dict[ModelKey, str] = {
+    ModelKey.MODEL_3: "5YJ3",
+    ModelKey.MODEL_Y: "7SAY",
+}
+
+AREA_TO_ZIPCODE = {
+    "Arizona": "85001",
+    "Colorado": "80001",
+    "Bay Area, CA": "94016",
+    "Los Angeles, CA": "90001",
+    "Florida": "33870",
+    "Georgia": "31201",
+    "Illinois": "60436",
+    "Massachusetts": "02210",
+    "Nevada": "89001",
+    "New Jersey": "07001",
+    "New York": "10001",
+    "Ohio": "43001",
+    "Oregon": "97001",
+    "Texas": "77840",
+    "Pennsylvania": "16823",
+    "Washington": "98109",
+    "Washington, DC": "20001",
 }

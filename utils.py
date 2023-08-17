@@ -6,7 +6,7 @@ import gspread
 from gspread.worksheet import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
 
-from constants import GMAIL_PASSWORD, GMAIL_USERNAME, SMTP_PORT, SMTP_SERVER
+from constants import *
 
 
 def usd_to_number(usd_str: str):
@@ -72,7 +72,7 @@ def write_to_gs(
 def data_in_gs(
     data_id: str,
     key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
-    sheet: str = "prices",
+    sheet_name: str = "prices",
 ):
     scope = [
         "https://www.googleapis.com/auth/spreadsheets",
@@ -83,7 +83,7 @@ def data_in_gs(
     )
     client = gspread.authorize(creds)
 
-    sheet: Worksheet = client.open_by_key(key).worksheet(sheet)
+    sheet: Worksheet = client.open_by_key(key).worksheet(sheet_name)
     data_ids: list[str] = sheet.col_values(9)
 
     for id in data_ids:
@@ -91,6 +91,61 @@ def data_in_gs(
             return True
 
     return False
+
+
+def get_trim(model: ModelKey, trim: str) -> str:
+    if trim == "Standard Range":
+        if model == ModelKey.MODEL_3:
+            return M3RWD
+        elif model == ModelKey.MODEL_Y:
+            return MYAWD
+    else:
+        return trim
+
+
+def get_user_input_from_gs(
+    key: str = "1GYcPORDUroIQIOfYDwmpxDIMgHDtiRe_Hj3MaaUvHis",
+    sheet_name: str = "Form Responses 1",
+):
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "./keys/google-sheets-key.json", scope
+    )
+    client = gspread.authorize(creds)
+
+    sheet: Worksheet = client.open_by_key(key).worksheet(sheet_name)
+    inputs: list[list[str]] = sheet.get_values()
+
+    clients: dict[tuple[str, ModelKey], list[dict]] = {}
+
+    for input in inputs[1:]:
+        if "paid" not in input[8]:
+            continue
+
+        print("checking for customer: " + input[1])
+
+        zip_code = AREA_TO_ZIPCODE[input[2]]
+        model = MODEL_NAME_KEY_MAP[ModelName(input[3])]
+        if (zip_code, model) not in clients:
+            clients[(zip_code, model)] = []
+        clients[(zip_code, model)].append(
+            {
+                "timestamp": input[0],
+                "email": input[1],
+                "max_price": input[4],
+                "min_discount": input[5],
+                "trims": [
+                    get_trim(model, trim.strip()) for trim in input[6].split(",")
+                ],
+            }
+        )
+
+        print(clients)
+
+    return clients
 
 
 def send_email(subject, to, body):

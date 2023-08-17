@@ -15,9 +15,9 @@ from utils import *
 
 
 def get_tesla_inventory_info(
-    zip_code: str, model: str, driver: WebDriver
+    zip_code: str, model: ModelKey, driver: WebDriver
 ) -> List[WebElement]:
-    driver.get(URL + model + QUERY + zip_code)
+    driver.get(URL + model.value + QUERY + zip_code)
     time.sleep(5)  # Let the page load
 
     # Find the element(s) - Adjust the method to fit the actual webpage structure
@@ -29,7 +29,7 @@ def get_tesla_inventory_info(
 def filter_tesla_inventory(
     inventory_elements: List[WebElement],
     condition: dict,
-    model: str,
+    model: ModelKey,
     zip_code: str,
 ):
     info_strs = []
@@ -44,8 +44,8 @@ def filter_tesla_inventory(
         data_id = item.get_attribute("data-id").split("-")[0]
 
         if should_alert(
-            condition["max_price"],
-            condition["min_discount"],
+            int(condition["max_price"]),
+            int(condition["min_discount"]),
             usd_to_number(new_price_element.text),
             usd_to_number(base_price_element.text),
         ) and not data_in_gs(data_id):
@@ -65,14 +65,14 @@ def filter_tesla_inventory(
                 By.CSS_SELECTOR, "section.result-features.features-grid"
             )
 
-            if len(condition["features"]) > 0:
-                eligible = True
-                for feature in condition["features"]:
-                    if feature not in features_element.text:
-                        eligible = False
-                        break
-                if not eligible:
-                    continue
+            # if len(condition["features"]) > 0:
+            #     eligible = True
+            #     for feature in condition["features"]:
+            #         if feature not in features_element.text:
+            #             eligible = False
+            #             break
+            #     if not eligible:
+            #         continue
 
             info_list = [
                 model_element.text,
@@ -85,7 +85,7 @@ def filter_tesla_inventory(
                 datetime.now().strftime("%m/%d/%Y, %H:%M:%S") + " PST",
                 zip_code,
                 "https://www.tesla.com/"
-                + model
+                + model.value
                 + "/order/"
                 + DATA_ID_PREFIX[model]
                 + data_id,
@@ -114,24 +114,24 @@ if __name__ == "__main__":
         )
         driver = webdriver.Chrome(options)
 
-        for client in CLIENTS:
-            inventory_elements = get_tesla_inventory_info(
-                client["zip_code"], client["model"], driver
-            )
-            for condition in client["conditions"]:
+        clients = get_user_input_from_gs()
+
+        for (zip_code, model), conditions in clients.items():
+            inventory_elements = get_tesla_inventory_info(zip_code, model, driver)
+            for condition in conditions:
                 info_strs = filter_tesla_inventory(
                     inventory_elements,
                     condition,
-                    client["model"],
-                    client["zip_code"],
+                    model,
+                    zip_code,
                 )
                 if len(info_strs) > 0:
                     print(info_strs)
                     send_email(
                         "Tesla Availability Alert "
-                        + MODEL_KEY_MAP[client["model"]]
+                        + MODEL_KEY_NAME_MAP[model].value
                         + " "
-                        + client["zip_code"],
+                        + zip_code,
                         condition["email"],
                         ("\n\n\n").join(info_strs),
                     )
