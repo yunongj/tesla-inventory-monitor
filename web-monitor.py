@@ -178,3 +178,6 @@ if __name__ == "__main__":
             print("Quitting driver...")
             driver.quit()
             break
+        except Exception as e:
+            print("Error: {}".format(e))
+            time.sleep(random.randint(60, 120))
