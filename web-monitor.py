@@ -10,6 +10,7 @@ from selenium.webdriver.remote.webelement import WebElement
 
 from config import *
 from constants import *
+from type import CarInfo
 from utils import *
 
 
@@ -31,8 +32,8 @@ def filter_tesla_inventory(
     model: ModelKey,
     zip_code: str,
     existing_data_ids: list[str],
-):
-    info_lists = []
+) -> list[CarInfo]:
+    cars = []
 
     for item in inventory_elements:
         new_price = usd_to_number(
@@ -85,20 +86,19 @@ def filter_tesla_inventory(
             if condition["refer"]:
                 purchase_link += "?referral=yunong861331"
 
-            info_list = [
+            car_info = CarInfo(
                 model_element.text,
                 new_price,
                 old_price,
-                old_price - new_price,
                 features_element.text.replace("\n", " # "),
-                datetime.now().strftime("%m/%d/%Y, %H:%M:%S") + " PST",
+                datetime.now(),
                 ZIPCODE_TO_AREA[zip_code],
                 purchase_link,
                 data_id,
-            ]
-            info_lists.append(info_list)
+            )
+            cars.append(car_info)
 
-    return info_lists
+    return cars
 
 
 if __name__ == "__main__":
@@ -126,14 +126,14 @@ if __name__ == "__main__":
         for (zip_code, model), conditions in clients.items():
             inventory_elements = get_tesla_inventory_info(zip_code, model, driver)
             for condition in conditions:
-                info_lists = filter_tesla_inventory(
+                cars = filter_tesla_inventory(
                     inventory_elements,
                     condition,
                     model,
                     zip_code,
                     existing_data_ids,
                 )
-                if len(info_lists) > 0:
+                if len(cars) > 0:
                     send_email(
                         "Tesla Availability Alert | "
                         + MODEL_KEY_NAME_MAP[model].value
@@ -141,14 +141,11 @@ if __name__ == "__main__":
                         + ZIPCODE_TO_AREA[zip_code],
                         condition["email"],
                         ("\n\n\n").join(
-                            [
-                                " | ".join(map(str, info_list))
-                                for info_list in info_lists
-                            ]
+                            [format_email_content(car_info) for car_info in cars]
                         ),
                     )
 
-                    gs_data_to_write += info_lists
+                    gs_data_to_write += [car.to_gs_row() for car in cars]
 
                     if args.playsound:
                         from playsound import playsound

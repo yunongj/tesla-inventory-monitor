@@ -8,6 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from config import PRICE_SHEET_KEY
 
 from constants import *
+from type import CarInfo
 
 
 def usd_to_number(usd_str: str):
@@ -15,7 +16,7 @@ def usd_to_number(usd_str: str):
 
 
 def number_to_usd(number: float):
-    return f"${number:,.2f}"
+    return f"${number:,}"
 
 
 def write_to_csv(data: list, filename: str = "prices.csv"):
@@ -153,3 +154,13 @@ def send_email(subject, to, body):
 
 def should_alert(max_price: int, min_discount: int, new_price: int, old_price: int):
     return new_price <= max_price and (old_price - new_price) >= min_discount
+
+
+def format_email_content(car_info: CarInfo) -> str:
+    return f"""Model: {car_info.model}
+New Price: {number_to_usd(car_info.new_price)}
+Old Price: {number_to_usd(car_info.old_price)}
+Discount: {number_to_usd(car_info.discount)}
+Features: {car_info.features}
+Area: {car_info.area}
+Purchase Link: {car_info.link}"""
