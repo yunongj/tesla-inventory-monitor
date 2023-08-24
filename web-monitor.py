@@ -74,6 +74,17 @@ def filter_tesla_inventory(
             #     if not eligible:
             #         continue
 
+            purchase_link = (
+                "https://www.tesla.com/"
+                + model.value
+                + "/order/"
+                + DATA_ID_PREFIX[model]
+                + data_id
+            )
+
+            if condition["refer"]:
+                purchase_link += "?referral=yunong861331"
+
             info_list = [
                 model_element.text,
                 new_price,
@@ -82,11 +93,7 @@ def filter_tesla_inventory(
                 features_element.text.replace("\n", " # "),
                 datetime.now().strftime("%m/%d/%Y, %H:%M:%S") + " PST",
                 ZIPCODE_TO_AREA[zip_code],
-                "https://www.tesla.com/"
-                + model.value
-                + "/order/"
-                + DATA_ID_PREFIX[model]
-                + data_id,
+                purchase_link,
                 data_id,
             ]
             info_lists.append(info_list)
@@ -99,7 +106,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--playsound", action="store_true", help="Plays a sound when deal is found"
     )
+    parser.add_argument("--test", action="store_true", help="Enable test mode")
     args = parser.parse_args()
+
+    mode = "test" if args.test else "prod"
 
     while True:
         options = webdriver.ChromeOptions()
@@ -109,7 +119,7 @@ if __name__ == "__main__":
         )
         driver = webdriver.Chrome(options)
 
-        clients = get_user_input_from_gs()
+        clients = get_user_input_from_gs(INPUT_SHEET_KEY[mode])
         existing_data_ids = get_data_ids_in_gs()
         gs_data_to_write = []
 
@@ -124,8 +134,6 @@ if __name__ == "__main__":
                     existing_data_ids,
                 )
                 if len(info_lists) > 0:
-                    # print(info_lists)
-
                     send_email(
                         "Tesla Availability Alert | "
                         + MODEL_KEY_NAME_MAP[model].value

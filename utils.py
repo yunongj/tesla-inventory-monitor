@@ -5,6 +5,7 @@ from email.message import EmailMessage
 import gspread
 from gspread.worksheet import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
+from config import PRICE_SHEET_KEY
 
 from constants import *
 
@@ -37,7 +38,7 @@ def data_in_csv(data_id: str, filename: str = "prices.csv"):
 
 def write_to_gs(
     data: list[list],
-    key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
+    key: str = PRICE_SHEET_KEY,
     sheet: str = "prices",
 ):
     scope = [
@@ -54,7 +55,7 @@ def write_to_gs(
 
 
 def get_data_ids_in_gs(
-    key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
+    key: str = PRICE_SHEET_KEY,
     sheet_name: str = "prices",
 ) -> list[str]:
     scope = [
@@ -91,7 +92,7 @@ def get_trim(model: ModelKey, trim: str) -> str:
 
 
 def get_user_input_from_gs(
-    key: str = "1GYcPORDUroIQIOfYDwmpxDIMgHDtiRe_Hj3MaaUvHis",
+    key: str,
     sheet_name: str = "Form Responses 1",
 ):
     scope = [
@@ -109,7 +110,7 @@ def get_user_input_from_gs(
     clients: dict[tuple[str, ModelKey], list[dict]] = {}
 
     for input in inputs[1:]:
-        if "paid" not in input[8]:
+        if "paid" not in input[9]:
             continue
 
         # print("checking for customer: " + input[1])
@@ -127,6 +128,7 @@ def get_user_input_from_gs(
                 "trims": [
                     get_trim(model, trim.strip()) for trim in input[6].split(",")
                 ],
+                "refer": True if "A" in input[7] else False,
             }
         )
 
