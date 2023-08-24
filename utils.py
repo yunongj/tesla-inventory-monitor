@@ -148,11 +148,15 @@ def should_alert(max_price: int, min_discount: int, new_price: int, old_price: i
     return new_price <= max_price and (old_price - new_price) >= min_discount
 
 
-def format_email_content(car_info: CarInfo) -> str:
+def format_email_content(car_info: CarInfo, refer: bool) -> str:
+    purchase_link = car_info.link
+    if refer:
+        purchase_link += REFER_QUERY
+
     return f"""Model: {car_info.model}
 New Price: {number_to_usd(car_info.new_price)}
 Old Price: {number_to_usd(car_info.old_price)}
 Discount: {number_to_usd(car_info.discount)}
 Features: {car_info.features}
 Area: {car_info.area}
-Purchase Link: {car_info.link}"""
+Purchase Link: {purchase_link}"""

@@ -67,3 +67,5 @@ AREA_TO_ZIPCODE: dict[str, str] = {
 }
 
 ZIPCODE_TO_AREA: dict[str, str] = {v: k for k, v in AREA_TO_ZIPCODE.items()}
+
+REFER_QUERY = "?referral=yunong861331"

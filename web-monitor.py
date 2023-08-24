@@ -88,17 +88,6 @@ def filter_tesla_inventory(
             #     if not eligible:
             #         continue
 
-            purchase_link = (
-                "https://www.tesla.com/"
-                + model.value
-                + "/order/"
-                + DATA_ID_PREFIX[model]
-                + data_id
-            )
-
-            if condition["refer"]:
-                purchase_link += "?referral=yunong861331"
-
             car_info = CarInfo(
                 model_element.text,
                 new_price,
@@ -106,7 +95,13 @@ def filter_tesla_inventory(
                 features_element.text.replace("\n", " # "),
                 datetime.now(),
                 ZIPCODE_TO_AREA[zip_code],
-                purchase_link,
+                (
+                    "https://www.tesla.com/"
+                    + model.value
+                    + "/order/"
+                    + DATA_ID_PREFIX[model]
+                    + data_id
+                ),
                 data_id,
             )
             cars.append(car_info)
@@ -156,7 +151,10 @@ if __name__ == "__main__":
                             + ZIPCODE_TO_AREA[zip_code],
                             condition["email"],
                             ("\n\n\n").join(
-                                [format_email_content(car_info) for car_info in cars]
+                                [
+                                    format_email_content(car_info, condition["refer"])
+                                    for car_info in cars
+                                ]
                             ),
                         )
 
