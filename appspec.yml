@@ -9,3 +9,5 @@ files:
     destination: /home/ec2-user/tesla-inventory-monitor
   - source: /web-monitor.py
     destination: /home/ec2-user/tesla-inventory-monitor
+  - source: /type.py
+    destination: /home/ec2-user/tesla-inventory-monitor
