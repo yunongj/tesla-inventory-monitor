@@ -1,4 +1,5 @@
 import argparse
+import random
 import time
 from datetime import datetime
 from typing import List
@@ -156,4 +157,4 @@ if __name__ == "__main__":
             write_to_gs(gs_data_to_write)
 
         driver.quit()
-        time.sleep(REFRESH_INTERVAL)
+        time.sleep(random.randint(60, 120))
