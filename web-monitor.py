@@ -1,4 +1,5 @@
 import argparse
+import random
 import time
 from datetime import datetime
 from typing import List
@@ -7,9 +8,12 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from config import *
 from constants import *
+from type import CarInfo
 from utils import *
 
 
@@ -17,10 +21,20 @@ def get_tesla_inventory_info(
     zip_code: str, model: ModelKey, driver: WebDriver
 ) -> List[WebElement]:
     driver.get(URL + model.value + QUERY + zip_code)
-    time.sleep(5)  # Let the page load
 
-    # Find the element(s) - Adjust the method to fit the actual webpage structure
-    inventory_elements = driver.find_elements(By.CSS_SELECTOR, "article.result.card")
+    try:
+        result_container: WebElement = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "div.results-container--has-results")
+            )
+        )
+        # Find the element(s) - Adjust the method to fit the actual webpage structure
+        inventory_elements: List[WebElement] = result_container.find_elements(
+            By.CSS_SELECTOR, "article.result.card"
+        )
+    except Exception as e:
+        print("Failed to find inventory elements. Error: {}".format(e))
+        return []
 
     return inventory_elements
 
@@ -30,9 +44,9 @@ def filter_tesla_inventory(
     condition: dict,
     model: ModelKey,
     zip_code: str,
-    existing_data_ids: list[str],
-):
-    info_lists = []
+    existing_data_ids: set[str],
+) -> list[CarInfo]:
+    cars = []
 
     for item in inventory_elements:
         new_price = usd_to_number(
@@ -48,7 +62,7 @@ def filter_tesla_inventory(
             int(condition["min_discount"]),
             new_price,
             old_price,
-        ) and not check_data_id_exists(data_id, existing_data_ids):
+        ) and (not data_id in existing_data_ids):
             model_element = item.find_element(
                 By.CSS_SELECTOR, "div.result-basic-info div"
             )
@@ -74,24 +88,25 @@ def filter_tesla_inventory(
             #     if not eligible:
             #         continue
 
-            info_list = [
+            car_info = CarInfo(
                 model_element.text,
                 new_price,
                 old_price,
-                old_price - new_price,
                 features_element.text.replace("\n", " # "),
-                datetime.now().strftime("%m/%d/%Y, %H:%M:%S") + " PST",
+                datetime.now(),
                 ZIPCODE_TO_AREA[zip_code],
-                "https://www.tesla.com/"
-                + model.value
-                + "/order/"
-                + DATA_ID_PREFIX[model]
-                + data_id,
+                (
+                    "https://www.tesla.com/"
+                    + model.value
+                    + "/order/"
+                    + DATA_ID_PREFIX[model]
+                    + data_id
+                ),
                 data_id,
-            ]
-            info_lists.append(info_list)
+            )
+            cars.append(car_info)
 
-    return info_lists
+    return cars
 
 
 if __name__ == "__main__":
@@ -99,56 +114,70 @@ if __name__ == "__main__":
     parser.add_argument(
         "--playsound", action="store_true", help="Plays a sound when deal is found"
     )
+    parser.add_argument("--test", action="store_true", help="Enable test mode")
     args = parser.parse_args()
 
+    mode = "test" if args.test else "prod"
+
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+    options.add_argument(
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    )
+
     while True:
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        options.add_argument(
-            "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        )
-        driver = webdriver.Chrome(options)
+        try:
+            driver = webdriver.Chrome(options)
+            clients = get_user_input_from_gs(INPUT_SHEET_KEY[mode])
+            existing_data_ids = set(get_data_ids_in_gs())
+            new_data_ids = set()
+            gs_data_to_write = []
 
-        clients = get_user_input_from_gs()
-        existing_data_ids = get_data_ids_in_gs()
-        gs_data_to_write = []
-
-        for (zip_code, model), conditions in clients.items():
-            inventory_elements = get_tesla_inventory_info(zip_code, model, driver)
-            for condition in conditions:
-                info_lists = filter_tesla_inventory(
-                    inventory_elements,
-                    condition,
-                    model,
-                    zip_code,
-                    existing_data_ids,
-                )
-                if len(info_lists) > 0:
-                    # print(info_lists)
-
-                    send_email(
-                        "Tesla Availability Alert | "
-                        + MODEL_KEY_NAME_MAP[model].value
-                        + " | "
-                        + ZIPCODE_TO_AREA[zip_code],
-                        condition["email"],
-                        ("\n\n\n").join(
-                            [
-                                " | ".join(map(str, info_list))
-                                for info_list in info_lists
-                            ]
-                        ),
+            for (zip_code, model), conditions in clients.items():
+                inventory_elements = get_tesla_inventory_info(zip_code, model, driver)
+                for condition in conditions:
+                    cars = filter_tesla_inventory(
+                        inventory_elements,
+                        condition,
+                        model,
+                        zip_code,
+                        existing_data_ids,
                     )
+                    if len(cars) > 0:
+                        send_email(
+                            "Tesla Availability Alert | "
+                            + MODEL_KEY_NAME_MAP[model].value
+                            + " | "
+                            + ZIPCODE_TO_AREA[zip_code],
+                            condition["email"],
+                            ("\n\n\n").join(
+                                [
+                                    format_email_content(car_info, condition["refer"])
+                                    for car_info in cars
+                                ]
+                            ),
+                        )
 
-                    gs_data_to_write += info_lists
+                        for car in cars:
+                            if car.data_id not in new_data_ids:
+                                new_data_ids.add(car.data_id)
+                                gs_data_to_write.append(car.to_gs_row())
 
-                    if args.playsound:
-                        from playsound import playsound
+                        if args.playsound:
+                            from playsound import playsound
 
-                        playsound("./alert.mp3")
+                            playsound("./alert.mp3")
 
-        if len(gs_data_to_write) > 0:
-            write_to_gs(gs_data_to_write)
+            if len(gs_data_to_write) > 0:
+                write_to_gs(gs_data_to_write)
 
-        driver.quit()
-        time.sleep(REFRESH_INTERVAL)
+            driver.quit()
+            time.sleep(random.randint(60, 120))
+
+        except KeyboardInterrupt:
+            print("Quitting driver...")
+            driver.quit()
+            break
+        except Exception as e:
+            print("Error: {}".format(e))
+            time.sleep(random.randint(60, 120))

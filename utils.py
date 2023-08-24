@@ -5,8 +5,10 @@ from email.message import EmailMessage
 import gspread
 from gspread.worksheet import Worksheet
 from oauth2client.service_account import ServiceAccountCredentials
+from config import PRICE_SHEET_KEY
 
 from constants import *
+from type import CarInfo
 
 
 def usd_to_number(usd_str: str):
@@ -14,7 +16,7 @@ def usd_to_number(usd_str: str):
 
 
 def number_to_usd(number: float):
-    return f"${number:,.2f}"
+    return f"${number:,}"
 
 
 def write_to_csv(data: list, filename: str = "prices.csv"):
@@ -37,7 +39,7 @@ def data_in_csv(data_id: str, filename: str = "prices.csv"):
 
 def write_to_gs(
     data: list[list],
-    key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
+    key: str = PRICE_SHEET_KEY,
     sheet: str = "prices",
 ):
     scope = [
@@ -54,7 +56,7 @@ def write_to_gs(
 
 
 def get_data_ids_in_gs(
-    key: str = "1OqP3qCCKYXuqvIhWLQY_4KwrdAMCVaKbD4iixHC7JLQ",
+    key: str = PRICE_SHEET_KEY,
     sheet_name: str = "prices",
 ) -> list[str]:
     scope = [
@@ -72,14 +74,6 @@ def get_data_ids_in_gs(
     return data_ids
 
 
-def check_data_id_exists(data_id: str, data_ids: list[str]) -> bool:
-    for id in data_ids:
-        if id == data_id:
-            return True
-
-    return False
-
-
 def get_trim(model: ModelKey, trim: str) -> str:
     if trim == "Standard Range":
         if model == ModelKey.MODEL_3:
@@ -91,7 +85,7 @@ def get_trim(model: ModelKey, trim: str) -> str:
 
 
 def get_user_input_from_gs(
-    key: str = "1GYcPORDUroIQIOfYDwmpxDIMgHDtiRe_Hj3MaaUvHis",
+    key: str,
     sheet_name: str = "Form Responses 1",
 ):
     scope = [
@@ -109,7 +103,7 @@ def get_user_input_from_gs(
     clients: dict[tuple[str, ModelKey], list[dict]] = {}
 
     for input in inputs[1:]:
-        if "paid" not in input[8]:
+        if "paid" not in input[9]:
             continue
 
         # print("checking for customer: " + input[1])
@@ -123,10 +117,11 @@ def get_user_input_from_gs(
                 "timestamp": input[0],
                 "email": input[1],
                 "max_price": input[4] or "1000000",
-                "min_discount": input[5] or "0",
+                "min_discount": input[5] or "1000",
                 "trims": [
                     get_trim(model, trim.strip()) for trim in input[6].split(",")
                 ],
+                "refer": True if "A" in input[7] else False,
             }
         )
 
@@ -151,3 +146,17 @@ def send_email(subject, to, body):
 
 def should_alert(max_price: int, min_discount: int, new_price: int, old_price: int):
     return new_price <= max_price and (old_price - new_price) >= min_discount
+
+
+def format_email_content(car_info: CarInfo, refer: bool) -> str:
+    purchase_link = car_info.link
+    if refer:
+        purchase_link += REFER_QUERY
+
+    return f"""Model: {car_info.model}
+New Price: {number_to_usd(car_info.new_price)}
+Old Price: {number_to_usd(car_info.old_price)}
+Discount: {number_to_usd(car_info.discount)}
+Features: {car_info.features}
+Area: {car_info.area}
+Purchase Link: {purchase_link}"""
