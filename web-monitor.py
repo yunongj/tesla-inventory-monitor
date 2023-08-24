@@ -32,7 +32,7 @@ def filter_tesla_inventory(
     condition: dict,
     model: ModelKey,
     zip_code: str,
-    existing_data_ids: list[str],
+    existing_data_ids: set[str],
 ) -> list[CarInfo]:
     cars = []
 
@@ -50,7 +50,7 @@ def filter_tesla_inventory(
             int(condition["min_discount"]),
             new_price,
             old_price,
-        ) and not check_data_id_exists(data_id, existing_data_ids):
+        ) and (not data_id in existing_data_ids):
             model_element = item.find_element(
                 By.CSS_SELECTOR, "div.result-basic-info div"
             )
@@ -121,7 +121,8 @@ if __name__ == "__main__":
         driver = webdriver.Chrome(options)
 
         clients = get_user_input_from_gs(INPUT_SHEET_KEY[mode])
-        existing_data_ids = get_data_ids_in_gs()
+        existing_data_ids = set(get_data_ids_in_gs())
+        new_data_ids = set()
         gs_data_to_write = []
 
         for (zip_code, model), conditions in clients.items():
@@ -146,7 +147,10 @@ if __name__ == "__main__":
                         ),
                     )
 
-                    gs_data_to_write += [car.to_gs_row() for car in cars]
+                    for car in cars:
+                        if car.data_id not in new_data_ids:
+                            new_data_ids.add(car.data_id)
+                            gs_data_to_write.append(car.to_gs_row())
 
                     if args.playsound:
                         from playsound import playsound

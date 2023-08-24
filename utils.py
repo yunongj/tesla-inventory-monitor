@@ -74,14 +74,6 @@ def get_data_ids_in_gs(
     return data_ids
 
 
-def check_data_id_exists(data_id: str, data_ids: list[str]) -> bool:
-    for id in data_ids:
-        if id == data_id:
-            return True
-
-    return False
-
-
 def get_trim(model: ModelKey, trim: str) -> str:
     if trim == "Standard Range":
         if model == ModelKey.MODEL_3:
