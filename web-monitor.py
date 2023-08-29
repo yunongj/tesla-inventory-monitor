@@ -172,7 +172,7 @@ if __name__ == "__main__":
                 write_to_gs(gs_data_to_write)
 
             driver.quit()
-            time.sleep(random.randint(60, 120))
+            time.sleep(random.randint(30, 60))
 
         except KeyboardInterrupt:
             print("Quitting driver...")
@@ -180,4 +180,4 @@ if __name__ == "__main__":
             break
         except Exception as e:
             print("Error: {}".format(e))
-            time.sleep(random.randint(60, 120))
+            time.sleep(random.randint(30, 60))
