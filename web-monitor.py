@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import random
 import time
 from datetime import datetime
@@ -163,12 +164,12 @@ if __name__ == "__main__":
                                 new_data_ids.add(car.data_id)
                                 gs_data_to_write.append(car.to_gs_row())
 
-                        if args.playsound:
-                            from playsound import playsound
-
-                            playsound("./alert.mp3")
-
             if len(gs_data_to_write) > 0:
+                # print(gs_data_to_write)
+                if args.playsound:
+                    from playsound import playsound
+
+                    playsound("./alert.mp3")
                 write_to_gs(gs_data_to_write)
 
             driver.quit()
