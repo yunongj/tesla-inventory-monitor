@@ -133,7 +133,7 @@ async def main():
         try:
             driver = webdriver.Chrome(options)
             clients = get_user_input_from_gs(INPUT_SHEET_KEY[mode])
-            existing_data_ids = set(get_data_ids_in_gs())
+            existing_data_ids = get_data_ids_in_gs()
             new_data_ids = set()
             gs_data_to_write = []
 
