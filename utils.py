@@ -154,7 +154,7 @@ def format_email_content(car_info: CarInfo, refer: bool) -> str:
     if refer:
         purchase_link += REFER_QUERY
 
-    return f"""Model: {car_info.model}
+    return f"""Model: {car_info.trim}
 New Price: {number_to_usd(car_info.new_price)}
 Old Price: {number_to_usd(car_info.old_price)}
 Discount: {number_to_usd(car_info.discount)}

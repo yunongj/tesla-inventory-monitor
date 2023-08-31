@@ -21,16 +21,14 @@ from utils import *
 
 def get_tesla_inventory_info(
     zip_code: str, model: ModelKey, driver: WebDriver
-) -> List[WebElement]:
+) -> list[CarInfo]:
     driver.get(URL + model.value + QUERY + zip_code)
-
     try:
         result_container: WebElement = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
                 (By.CSS_SELECTOR, "div.results-container--has-results")
             )
         )
-        # Find the element(s) - Adjust the method to fit the actual webpage structure
         inventory_elements: List[WebElement] = result_container.find_elements(
             By.CSS_SELECTOR, "article.result.card"
         )
@@ -38,18 +36,7 @@ def get_tesla_inventory_info(
         print("Failed to find inventory elements. Error: {}".format(e))
         return []
 
-    return inventory_elements
-
-
-def filter_tesla_inventory(
-    inventory_elements: List[WebElement],
-    condition: dict,
-    model: ModelKey,
-    zip_code: str,
-    existing_data_ids: set[str],
-) -> list[CarInfo]:
-    cars = []
-
+    cars: list[CarInfo] = []
     for item in inventory_elements:
         try:
             new_price = usd_to_number(
@@ -63,30 +50,54 @@ def filter_tesla_inventory(
         except Exception as e:
             print("Failed to find price element. Error: {}".format(e))
             continue
-
         data_id = item.get_attribute("data-id").split("-")[0]
+        trim = item.find_element(By.CSS_SELECTOR, "div.result-basic-info div").text
+        features = item.find_element(
+            By.CSS_SELECTOR, "section.result-features.features-grid"
+        ).text.replace("\n", " # ")
+        cars.append(
+            CarInfo(
+                trim=trim,
+                new_price=new_price,
+                old_price=old_price,
+                features=features,
+                timestamp=datetime.now(),
+                area=ZIPCODE_TO_AREA[zip_code],
+                link=(
+                    "https://www.tesla.com/"
+                    + model.value
+                    + "/order/"
+                    + DATA_ID_PREFIX[model]
+                    + data_id
+                ),
+                data_id=data_id,
+            )
+        )
 
+    return cars
+
+
+def filter_tesla_inventory(
+    unfiltered_cars: list[CarInfo],
+    condition: dict,
+    existing_data_ids: set[str],
+) -> list[CarInfo]:
+    filtered_cars: list[CarInfo] = []
+    for car in unfiltered_cars:
         if should_alert(
             int(condition["max_price"]),
             int(condition["min_discount"]),
-            new_price,
-            old_price,
-        ) and (not data_id in existing_data_ids):
-            model_element = item.find_element(
-                By.CSS_SELECTOR, "div.result-basic-info div"
-            )
+            car.new_price,
+            car.old_price,
+        ) and (not car.data_id in existing_data_ids):
             if len(condition["trims"]) > 0:
                 eligible = False
                 for trim in condition["trims"]:
-                    if trim in model_element.text:
+                    if trim in car.trim:
                         eligible = True
                         break
                 if not eligible:
                     continue
-
-            features_element = item.find_element(
-                By.CSS_SELECTOR, "section.result-features.features-grid"
-            )
 
             # if len(condition["features"]) > 0:
             #     eligible = True
@@ -97,25 +108,9 @@ def filter_tesla_inventory(
             #     if not eligible:
             #         continue
 
-            car_info = CarInfo(
-                model_element.text,
-                new_price,
-                old_price,
-                features_element.text.replace("\n", " # "),
-                datetime.now(),
-                ZIPCODE_TO_AREA[zip_code],
-                (
-                    "https://www.tesla.com/"
-                    + model.value
-                    + "/order/"
-                    + DATA_ID_PREFIX[model]
-                    + data_id
-                ),
-                data_id,
-            )
-            cars.append(car_info)
+            filtered_cars.append(car)
 
-    return cars
+    return filtered_cars
 
 
 async def main():
@@ -146,16 +141,14 @@ async def main():
             futures = []
 
             for (zip_code, model), conditions in clients.items():
-                inventory_elements = get_tesla_inventory_info(zip_code, model, driver)
+                unfiltered_cars = get_tesla_inventory_info(zip_code, model, driver)
                 for condition in conditions:
-                    cars = filter_tesla_inventory(
-                        inventory_elements,
+                    filtered_cars: list[CarInfo] = filter_tesla_inventory(
+                        unfiltered_cars,
                         condition,
-                        model,
-                        zip_code,
                         existing_data_ids,
                     )
-                    if len(cars) > 0:
+                    if len(filtered_cars) > 0:
                         email_subject = (
                             "Tesla Availability Alert | "
                             + MODEL_KEY_NAME_MAP[model].value
@@ -165,8 +158,8 @@ async def main():
                         email_address = condition["email"]
                         email_body = ("\n\n\n").join(
                             [
-                                format_email_content(car_info, condition["refer"])
-                                for car_info in cars
+                                format_email_content(car, condition["refer"])
+                                for car in filtered_cars
                             ]
                         )
 
@@ -180,7 +173,8 @@ async def main():
                             )
                         )
 
-                        for car in cars:
+                        # Add cars to be appended to google sheet
+                        for car in filtered_cars:
                             if car.data_id not in new_data_ids:
                                 new_data_ids.add(car.data_id)
                                 gs_data_to_write.append(car.to_gs_row())
