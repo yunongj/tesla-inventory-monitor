@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List
 
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -50,12 +51,19 @@ def filter_tesla_inventory(
     cars = []
 
     for item in inventory_elements:
-        new_price = usd_to_number(
-            item.find_element(By.CSS_SELECTOR, "span.result-purchase-price").text
-        )
-        old_price = usd_to_number(
-            item.find_element(By.CSS_SELECTOR, "span.result-price-base-price").text
-        )
+        try:
+            new_price = usd_to_number(
+                item.find_element(By.CSS_SELECTOR, "span.result-purchase-price").text
+            )
+            old_price = usd_to_number(
+                item.find_element(By.CSS_SELECTOR, "span.result-price-base-price").text
+            )
+        except NoSuchElementException:
+            continue
+        except Exception as e:
+            print("Failed to find price element. Error: {}".format(e))
+            continue
+
         data_id = item.get_attribute("data-id").split("-")[0]
 
         if should_alert(
@@ -121,7 +129,7 @@ async def main():
     mode = "test" if args.test else "prod"
 
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     )
