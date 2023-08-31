@@ -110,7 +110,7 @@ def filter_tesla_inventory(
     return cars
 
 
-if __name__ == "__main__":
+async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--playsound", action="store_true", help="Plays a sound when deal is found"
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     mode = "test" if args.test else "prod"
 
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
+    # options.add_argument("--headless")
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     )
@@ -134,6 +134,9 @@ if __name__ == "__main__":
             new_data_ids = set()
             gs_data_to_write = []
 
+            loop = asyncio.get_event_loop()
+            futures = []
+
             for (zip_code, model), conditions in clients.items():
                 inventory_elements = get_tesla_inventory_info(zip_code, model, driver)
                 for condition in conditions:
@@ -145,18 +148,28 @@ if __name__ == "__main__":
                         existing_data_ids,
                     )
                     if len(cars) > 0:
-                        send_email(
+                        email_subject = (
                             "Tesla Availability Alert | "
                             + MODEL_KEY_NAME_MAP[model].value
                             + " | "
-                            + ZIPCODE_TO_AREA[zip_code],
-                            condition["email"],
-                            ("\n\n\n").join(
-                                [
-                                    format_email_content(car_info, condition["refer"])
-                                    for car_info in cars
-                                ]
-                            ),
+                            + ZIPCODE_TO_AREA[zip_code]
+                        )
+                        email_address = condition["email"]
+                        email_body = ("\n\n\n").join(
+                            [
+                                format_email_content(car_info, condition["refer"])
+                                for car_info in cars
+                            ]
+                        )
+
+                        futures.append(
+                            loop.run_in_executor(
+                                None,
+                                send_email,
+                                email_subject,
+                                email_address,
+                                email_body,
+                            )
                         )
 
                         for car in cars:
@@ -165,7 +178,7 @@ if __name__ == "__main__":
                                 gs_data_to_write.append(car.to_gs_row())
 
             if len(gs_data_to_write) > 0:
-                # print(gs_data_to_write)
+                print(gs_data_to_write)
                 if args.playsound:
                     from playsound import playsound
 
@@ -173,6 +186,7 @@ if __name__ == "__main__":
                 write_to_gs(gs_data_to_write)
 
             driver.quit()
+            await asyncio.gather(*futures)
             time.sleep(random.randint(30, 60))
 
         except KeyboardInterrupt:
@@ -182,3 +196,7 @@ if __name__ == "__main__":
         except Exception as e:
             print("Error: {}".format(e))
             time.sleep(random.randint(30, 60))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

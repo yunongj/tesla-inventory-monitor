@@ -142,6 +142,7 @@ def send_email(subject, to, body):
         msg["To"] = to
 
         smtp.send_message(msg)
+        smtp.close()
 
 
 def should_alert(max_price: int, min_discount: int, new_price: int, old_price: int):
