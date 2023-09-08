@@ -71,16 +71,17 @@ def get_data_ids_in_gs(
 
     sheet: Worksheet = client.open_by_key(key).worksheet(sheet_name)
     data_ids: list[str] = sheet.col_values(9)[1:]
-    found_times: list[str] = sheet.col_values(6)[1:]
+    # found_times: list[str] = sheet.col_values(6)[1:]
 
-    recent_data_ids = set()
-    for i in range(len(data_ids)):
-        if datetime.now() - datetime.strptime(
-            found_times[i], "%m/%d/%Y, %H:%M:%S %Z"
-        ) < timedelta(hours=12):
-            recent_data_ids.add(data_ids[i])
+    # recent_data_ids = set()
+    # for i in range(len(data_ids)):
+    #     if datetime.now() - datetime.strptime(
+    #         found_times[i], "%m/%d/%Y, %H:%M:%S %Z"
+    #     ) < timedelta(hours=12):
+    #         recent_data_ids.add(data_ids[i])
 
-    return recent_data_ids
+    # return recent_data_ids
+    return data_ids
 
 
 def get_trim(model: ModelKey, trim: str) -> str:
